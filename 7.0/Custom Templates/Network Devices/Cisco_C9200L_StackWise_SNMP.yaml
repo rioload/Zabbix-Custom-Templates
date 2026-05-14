@@ -1,0 +1,100 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 95a70da727284b728f3ec8df3779e27c
+      name: 'Custom Templates/Network Devices'
+  templates:
+    # MD5("Cisco C9200L StackWise SNMP")
+    - uuid: e93136daeabd4a92866838a37943c21a
+      template: 'Cisco_C9200L_StackWise_SNMP'
+      name: 'Cisco C9200L StackWise SNMP'
+      description: '專門監控 Cisco 堆疊 (Stack) 狀態。包含 Stack Ring 備援狀態及 Switch 成員的離線/當機告警。UUID 採用基於 Name 的 MD5 雜湊生成 (v4 相容)。'
+      groups:
+        - name: 'Custom Templates/Network Devices'
+      items:
+        - uuid: 5d80d2cc91b14d9f83d5ec61fbbcd1cb
+          name: 'Stack: Ring Redundancy Status'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.9.9.500.1.1.3.0
+          key: cisco.stack.ring.redundant
+          delay: 5m
+          value_type: FLOAT
+          valuemap:
+            name: 'StackWise Ring Redundancy'
+          tags:
+            - tag: component
+              value: stack
+          triggers:
+            - uuid: c069b2dca97b46a686e5fce06716a445
+              expression: 'last(/Cisco_C9200L_StackWise_SNMP/cisco.stack.ring.redundant)<>1'
+              name: 'Stack: Ring Redundancy Lost (Cable Disconnected)'
+              priority: HIGH
+      discovery_rules:
+        - uuid: 73bde1a8bba14dcb86b7617b1fb93e62
+          name: 'Stack Members Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SWITCHNUM},1.3.6.1.4.1.9.9.500.1.2.1.1.1]'
+          key: cisco.stack.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 5bb7cf4362a949028190ab7aeb3eeb1c
+              name: 'Switch {#SWITCHNUM}: State'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.9.9.500.1.2.1.1.6.{#SNMPINDEX}'
+              key: 'cisco.stack.state[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'StackWise Switch State'
+              tags:
+                - tag: component
+                  value: stack
+              trigger_prototypes:
+                - uuid: 44a0e909a80e461b844d21e8e974e648
+                  expression: 'last(/Cisco_C9200L_StackWise_SNMP/cisco.stack.state[{#SNMPINDEX}])<>4 and last(/Cisco_C9200L_StackWise_SNMP/cisco.stack.state[{#SNMPINDEX}])<>5'
+                  name: 'Stack: Switch {#SWITCHNUM} is Offline or Not Ready'
+                  priority: HIGH
+            - uuid: 880f0896ad2c468b87b778736bb62e26
+              name: 'Switch {#SWITCHNUM}: Role'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.9.9.500.1.2.1.1.3.{#SNMPINDEX}'
+              key: 'cisco.stack.role[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'StackWise Switch Role'
+              tags:
+                - tag: component
+                  value: stack
+      valuemaps:
+        - uuid: 02bdcd9e29a847db800fc77e201b17b2
+          name: 'StackWise Ring Redundancy'
+          mappings:
+            - value: '1'
+              newvalue: 'True (Redundant)'
+            - value: '2'
+              newvalue: 'False (Non-redundant)'
+        - uuid: 05634563a34a42248d41fbd6d0c41031
+          name: 'StackWise Switch State'
+          mappings:
+            - value: '1'
+              newvalue: Waiting
+            - value: '2'
+              newvalue: Progressing
+            - value: '3'
+              newvalue: Added
+            - value: '4'
+              newvalue: Ready
+            - value: '5'
+              newvalue: Provisioned
+            - value: '6'
+              newvalue: Removed
+        - uuid: 644de7bc93284f9a8852077e6270fb37
+          name: 'StackWise Switch Role'
+          mappings:
+            - value: '1'
+              newvalue: Master
+            - value: '2'
+              newvalue: Member
+            - value: '3'
+              newvalue: Not Provisioned
+            - value: '4'
+              newvalue: Standby

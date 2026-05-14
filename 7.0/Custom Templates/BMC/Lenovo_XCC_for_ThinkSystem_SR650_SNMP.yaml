@@ -1,0 +1,150 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    # MD5("Custom Templates/BMC")
+    - uuid: 748ad4d098d447d482bb935c907f652f
+      name: 'Custom Templates/BMC'
+  templates:
+    # MD5("Lenovo XCC for ThinkSystem SR650 SNMP")
+    - uuid: 185031b26918451183026725a3962640
+      template: 'Lenovo_XCC_for_ThinkSystem_SR650_SNMP'
+      name: 'Lenovo XCC for ThinkSystem SR650 SNMP'
+      description: '包含溫度、風扇、硬碟、電源供應器、電壓及 RAID 陣列卡監控。UUID 採用基於 Name 的 MD5 生成。'
+      groups:
+        - name: 'Custom Templates/BMC'
+      items:
+        # MD5("System: Model Name")
+        - uuid: c1c2c3c4c5c64c7c8c9c0c1c2c3c4c5c
+          name: 'System: Model Name'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.19046.11.1.1.5.2.1.5.0
+          key: lenovo.v2.model
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+        # MD5("System: Serial Number")
+        - uuid: d1d2d3d4d5d64d7d8d9d0d1d2d3d4d5d
+          name: 'System: Serial Number'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.19046.11.1.1.5.2.1.3.0
+          key: lenovo.v2.serial
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+      discovery_rules:
+        # 1. 溫度監控
+        - uuid: f1f2f3f4f5f64f7f8f9f0f1f2f3f4f5f
+          name: 'Temperature Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SENSOR.NAME},.1.3.6.1.4.1.19046.11.1.1.1.2.1.2]'
+          key: lenovo.v2.temp.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: a1a2a3a4a5a64a7a8a9a0a1a2a3a4a5a
+              name: 'Temp: {#SENSOR.NAME}'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.19046.11.1.1.1.2.1.3.{#SNMPINDEX}'
+              key: 'lenovo.v2.temp.value[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: °C
+              preprocessing:
+                - type: REGEX
+                  parameters: ['([0-9\.-]+)', '\1']
+              tags:
+                - tag: component
+                  value: temperature
+
+        # 2. 風扇監控
+        - uuid: 1a2b3c4d5e6f4a1b8c2d3e4f5a6b7c8d
+          name: 'Fans Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#FAN.NAME},.1.3.6.1.4.1.19046.11.1.1.3.2.1.2]'
+          key: lenovo.v2.fan.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 2b3c4d5e6f7a4b2c8d3e4f5a6b7c8d9e
+              name: 'Fan Speed: {#FAN.NAME}'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.19046.11.1.1.3.2.1.3.{#SNMPINDEX}'
+              key: 'lenovo.v2.fan.value[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: '%'
+              preprocessing:
+                - type: REGEX
+                  parameters: ['.*?(\d+).*', '\1']
+              tags:
+                - tag: component
+                  value: fan
+
+        # 3. 實體硬碟監控 (已更新觸發器路徑)
+        - uuid: 3c4d5e6f7a8b4c3d8e4f5a6b7c8d9e0f
+          name: 'Physical Disks Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#DISK.NAME},.1.3.6.1.4.1.19046.11.1.1.12.2.1.2]'
+          key: lenovo.v2.disk.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 4d5e6f7a8b9c4d4e8f5a6b7c8d9e0f1a
+              name: 'Disk Status: {#DISK.NAME}'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.19046.11.1.1.12.2.1.3.{#SNMPINDEX}'
+              key: 'lenovo.v2.disk.status[{#SNMPINDEX}]'
+              value_type: CHAR
+              tags:
+                - tag: component
+                  value: storage
+              trigger_prototypes:
+                - uuid: 5e6f7a8b9c0d4e5f8a6b7c8d9e0f1a2b
+                  expression: 'last(/Lenovo_XCC_for_ThinkSystem_SR650_SNMP/lenovo.v2.disk.status[{#SNMPINDEX}])<>"Normal"'
+                  name: 'Storage: Disk {#DISK.NAME} Failure'
+                  priority: HIGH
+
+        # 4. 電源供應器監控 (已更新觸發器路徑)
+        - uuid: 6f7a8b9c0d1e4f6a8b7c8d9e0f1a2b3c
+          name: 'Power Supply Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#PSU.NAME},.1.3.6.1.4.1.19046.11.1.1.11.2.1.2]'
+          key: lenovo.v2.psu.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 7a8b9c0d1e2f4a7b8c8d9e0f1a2b3c4d
+              name: 'PSU Status: {#PSU.NAME}'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.19046.11.1.1.11.2.1.6.{#SNMPINDEX}'
+              key: 'lenovo.v2.psu.status[{#SNMPINDEX}]'
+              value_type: CHAR
+              tags:
+                - tag: component
+                  value: power
+              trigger_prototypes:
+                - uuid: 8b9c0d1e2f3a4b8c8d9e0f1a2b3c4d5e
+                  expression: 'last(/Lenovo_XCC_for_ThinkSystem_SR650_SNMP/lenovo.v2.psu.status[{#SNMPINDEX}])<>"Normal"'
+                  name: 'Power: {#PSU.NAME} is Abnormal'
+                  priority: HIGH
+
+        # 5. RAID 控製器監控 (已更新觸發器路徑)
+        - uuid: 1d1e2f3a4b5c4d0e8f1a2b3c4d5e6f7b
+          name: 'RAID Controllers Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#RAID.NAME},.1.3.6.1.4.1.19046.11.1.1.13.1.2.1.3]'
+          key: lenovo.v2.raid.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 2d1e2f3a4b5c4d0e8f1a2b3c4d5e6f7c
+              name: 'RAID Status: {#RAID.NAME}'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.19046.11.1.1.13.1.2.1.24.{#SNMPINDEX}'
+              key: 'lenovo.v2.raid.status[{#SNMPINDEX}]'
+              value_type: CHAR
+              tags:
+                - tag: component
+                  value: storage
+              trigger_prototypes:
+                - uuid: 3d1e2f3a4b5c4d0e8f1a2b3c4d5e6f7d
+                  expression: 'last(/Lenovo_XCC_for_ThinkSystem_SR650_SNMP/lenovo.v2.raid.status[{#SNMPINDEX}])<>"Operational"'
+                  name: 'Storage: RAID Controller {#RAID.NAME} is Not Operational'
+                  priority: HIGH

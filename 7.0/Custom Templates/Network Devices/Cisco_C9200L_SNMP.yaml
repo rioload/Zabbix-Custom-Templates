@@ -1,0 +1,162 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    # MD5("Custom Templates/Network Devices")
+    - uuid: 95a70da727284b728f3ec8df3779e27c
+      name: 'Custom Templates/Network Devices'
+  templates:
+    # MD5("Cisco C9200L SNMP")
+    - uuid: 548b2513f56d453a8e693998b3c97693
+      template: 'Cisco_C9200L_SNMP'
+      name: 'Cisco C9200L SNMP'
+      description: '包含系統資訊、流量圖表生成、過濾虛擬介面。UUID 採 MD5 雜湊生成。'
+      groups:
+        - name: 'Custom Templates/Network Devices'
+      items:
+        - uuid: 8b1a9953c46142968827abf8c47804d7
+          name: 'System: Description'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.1.0
+          key: cisco.system.descr
+          delay: 1h
+          value_type: TEXT
+          tags:
+            - tag: component
+              value: system
+        - uuid: d9e03f0b4d4549e588fb1803eaaf23c6
+          name: 'System: Name'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.5.0
+          key: cisco.system.name
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+        - uuid: 53f5cf73a6a145438f4a9b581561ce14
+          name: 'System: Uptime'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.3.0
+          key: cisco.system.uptime
+          delay: 1m
+          value_type: FLOAT
+          units: uptime
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+      discovery_rules:
+        - uuid: 8874136f332a47bc8a13d78904df90be
+          name: 'Network Interfaces Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#IFDESCR},1.3.6.1.2.1.2.2.1.2]'
+          key: cisco.net.if.discovery
+          delay: 1h
+          lifetime: 7d
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#IFDESCR}'
+                value: 'unrouted VLAN|Null|Loopback|StackSub|StackPort'
+                operator: NOT_MATCHES_REGEX
+          item_prototypes:
+            - uuid: 39af2e70e30444b98687ba2df4eb851d
+              name: 'Interface {#IFDESCR}: Admin Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.7.{#SNMPINDEX}'
+              key: 'cisco.net.if.admin[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB interface status'
+              tags:
+                - tag: component
+                  value: network
+            - uuid: 690c5c3695264bf085d92e5fc6fbdd1a
+              name: 'Interface {#IFDESCR}: Operational Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}'
+              key: 'cisco.net.if.oper[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB interface status'
+              tags:
+                - tag: component
+                  value: network
+              trigger_prototypes:
+                # 嚴重 (HIGH)：動態斷線，路徑更新為 Cisco_C9200L_SNMP
+                - uuid: 77f191b44ecb4c528cd1405e6dc6d7bd
+                  expression: 'last(/Cisco_C9200L_SNMP/cisco.net.if.oper[{#SNMPINDEX}])=2 and last(/Cisco_C9200L_SNMP/cisco.net.if.oper[{#SNMPINDEX}],#2)=1'
+                  name: 'Network: Interface {#IFDESCR} Link DOWN (Critical Change)'
+                  priority: HIGH
+                # 資訊 (INFO)：靜態未接線
+                - uuid: 2e7aab244a2b478e85d1f8a85fcd1cf4
+                  expression: 'last(/Cisco_C9200L_SNMP/cisco.net.if.oper[{#SNMPINDEX}])=2'
+                  name: 'Network: Interface {#IFDESCR} is Down (Static)'
+                  priority: INFO
+                  dependencies:
+                    - name: 'Network: Interface {#IFDESCR} Link DOWN (Critical Change)'
+                      expression: 'last(/Cisco_C9200L_SNMP/cisco.net.if.oper[{#SNMPINDEX}])=2 and last(/Cisco_C9200L_SNMP/cisco.net.if.oper[{#SNMPINDEX}],#2)=1'
+            - uuid: 0bca5cc3340b4bfca0db4608c0ef2161
+              name: 'Interface {#IFDESCR}: Inbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.10.{#SNMPINDEX}'
+              key: 'cisco.net.if.in[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+              tags:
+                - tag: component
+                  value: network
+            - uuid: eb0af3669ca946f386ccbc48ffbc9d2b
+              name: 'Interface {#IFDESCR}: Outbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.16.{#SNMPINDEX}'
+              key: 'cisco.net.if.out[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+              tags:
+                - tag: component
+                  value: network
+          graph_prototypes:
+            - uuid: 4c2d3b1e8a9f4c7a8b3e5d6f7a8b9c0d
+              name: 'Traffic Graph: Interface {#IFDESCR}'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'Cisco_C9200L_SNMP'
+                    key: 'cisco.net.if.in[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  color: F63100
+                  item:
+                    host: 'Cisco_C9200L_SNMP'
+                    key: 'cisco.net.if.out[{#SNMPINDEX}]'
+      valuemaps:
+        - uuid: fc49d21eb8c9497c88b9dded6062c3e1
+          name: 'IF-MIB interface status'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '4'
+              newvalue: unknown
+            - value: '5'
+              newvalue: dormant
+            - value: '6'
+              newvalue: notPresent
+            - value: '7'
+              newvalue: lowerLayerDown
