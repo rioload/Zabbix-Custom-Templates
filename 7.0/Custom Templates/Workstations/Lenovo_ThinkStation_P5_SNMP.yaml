@@ -1,0 +1,217 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: '1196a066b1d441118128dc13735c0245'
+      name: 'Custom Templates/Workstations'
+  templates:
+    - uuid: '8d1f2a36b4c1482f801538a7c295b9d3'
+      template: 'Lenovo_ThinkStation_P5_SNMP'
+      name: 'Lenovo ThinkStation P5 SNMP'
+      description: 'Lenovo ThinkStation P5 專用 SNMP 範本。'
+      groups:
+        - name: 'Custom Templates/Workstations'
+      items:
+        - uuid: '7f83b1657c6b412185b1a37c02b9e6a0'
+          name: 'System: Name'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.5.0
+          key: system.name
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+        - uuid: '3e8a4a58b5f34bc88a5369654d68e1a1'
+          name: 'System: Uptime'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.3.0
+          key: system.uptime
+          delay: 1m
+          value_type: FLOAT
+          units: uptime
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 'c60c5ea1ab1440cc8c42a2754668b99c'
+          name: 'System: Contact'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.4.0
+          key: system.contact
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+        - uuid: 'b39d7e6f8a2c419985d4f1b2a3c4e5d6'
+          name: 'System: Location'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.6.0
+          key: system.location
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+
+      discovery_rules:
+        - uuid: '9c1482a5d2b144fa8f76e3c5a6b0c2a8'
+          name: 'Network Interfaces Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#IFDESCR},1.3.6.1.2.1.2.2.1.2]'
+          key: net.if.discovery
+          delay: 1h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#IFDESCR}'
+                value: '^(lo|sit[0-9]+|ip6tnl[0-9]+)$|Software Loopback|Miniport|Virtual|Teredo|ISATAP'
+                operator: NOT_MATCHES_REGEX
+          item_prototypes:
+            - uuid: '5b6c9f8a3d124b898c6d1f4e5a7b2c9d'
+              name: 'Interface {#IFDESCR}: Operational Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}'
+              key: 'net.if.oper[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB interface status'
+              tags:
+                - tag: component
+                  value: network
+              trigger_prototypes:
+                - uuid: 'd3a5c8b21f4e4176889d2b5c6a1f3e7b'
+                  expression: 'last(/Lenovo_ThinkStation_P5_SNMP/net.if.oper[{#SNMPINDEX}])=2 and last(/Lenovo_ThinkStation_P5_SNMP/net.if.oper[{#SNMPINDEX}],#2)=1'
+                  name: 'Network: Interface {#IFDESCR} Link DOWN'
+                  priority: HIGH
+            - uuid: '8f2c3a1b4e5d4a678b9c1d2e5f6a8b7c'
+              name: 'Interface {#IFDESCR}: Inbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.10.{#SNMPINDEX}'
+              key: 'net.if.in[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+            - uuid: 'c1d2e3f4a5b64c788d9e0f1a2b3c4d5e'
+              name: 'Interface {#IFDESCR}: Outbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.16.{#SNMPINDEX}'
+              key: 'net.if.out[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+          graph_prototypes:
+            - uuid: '4e5f6a7b8c9d412384561234abcd5678'
+              name: 'Traffic Graph: Interface {#IFDESCR}'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'Lenovo_ThinkStation_P5_SNMP'
+                    key: 'net.if.in[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  color: F63100
+                  item:
+                    host: 'Lenovo_ThinkStation_P5_SNMP'
+                    key: 'net.if.out[{#SNMPINDEX}]'
+
+        - uuid: '2f3a4b5c6d7e48908f1a2b3c4d5e6f7a'
+          name: 'CPU Processors Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#CPU_ID},1.3.6.1.2.1.25.3.3.1.2]'
+          key: cpu.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: '9a8b7c6d5e4f43218123abcdef456789'
+              name: 'CPU {#CPU_ID}: Utilization'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.25.3.3.1.2.{#SNMPINDEX}'
+              key: 'cpu.util[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: '%'
+              tags:
+                - tag: component
+                  value: cpu
+
+        - uuid: 'b1c2d3e4f5a6478980123456789abcde'
+          name: 'Storage & Memory Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#STORAGE_DESC},1.3.6.1.2.1.25.2.3.1.3]'
+          key: storage.discovery
+          delay: 1h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#STORAGE_DESC}'
+                value: 'Virtual|Swap'
+                operator: NOT_MATCHES_REGEX
+          item_prototypes:
+            - uuid: 'c2d3e4f5a6b748908123456789abcdef'
+              name: 'Storage {#STORAGE_DESC}: Allocation Units'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.25.2.3.1.4.{#SNMPINDEX}'
+              key: 'storage.units[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: B
+              tags:
+                - tag: component
+                  value: storage
+            - uuid: 'd3e4f5a6b7c84901823456789abcdef0'
+              name: 'Storage {#STORAGE_DESC}: Size Total'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.25.2.3.1.5.{#SNMPINDEX}'
+              key: 'storage.size[{#SNMPINDEX}]'
+              value_type: FLOAT
+              tags:
+                - tag: component
+                  value: storage
+            - uuid: 'e4f5a6b7c8d9401283456789abcdef01'
+              name: 'Storage {#STORAGE_DESC}: Used'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.25.2.3.1.6.{#SNMPINDEX}'
+              key: 'storage.used[{#SNMPINDEX}]'
+              value_type: FLOAT
+              tags:
+                - tag: component
+                  value: storage
+              trigger_prototypes:
+                - uuid: 'a1b2c3d4e5f647898123456789abcdef'
+                  expression: 'last(/Lenovo_ThinkStation_P5_SNMP/storage.used[{#SNMPINDEX}]) > (last(/Lenovo_ThinkStation_P5_SNMP/storage.size[{#SNMPINDEX}]) * 0.85)'
+                  name: 'System: {#STORAGE_DESC} 使用率超過 85%'
+                  priority: WARNING
+                - uuid: 'b2c3d4e5f6a74890823456789abcdef0'
+                  expression: 'last(/Lenovo_ThinkStation_P5_SNMP/storage.used[{#SNMPINDEX}]) > (last(/Lenovo_ThinkStation_P5_SNMP/storage.size[{#SNMPINDEX}]) * 0.95)'
+                  name: 'System: {#STORAGE_DESC} 空間嚴重不足 (超過 95%)'
+                  priority: HIGH
+                  dependencies:
+                    - name: 'System: {#STORAGE_DESC} 使用率超過 85%'
+                      expression: 'last(/Lenovo_ThinkStation_P5_SNMP/storage.used[{#SNMPINDEX}]) > (last(/Lenovo_ThinkStation_P5_SNMP/storage.size[{#SNMPINDEX}]) * 0.85)'
+                      
+      valuemaps:
+        - uuid: '5a6b7c8d9e0f41238456789abcdef012'
+          name: 'IF-MIB interface status'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '4'
+              newvalue: unknown
+            - value: '5'
+              newvalue: dormant
+            - value: '6'
+              newvalue: notPresent
+            - value: '7'
+              newvalue: lowerLayerDown

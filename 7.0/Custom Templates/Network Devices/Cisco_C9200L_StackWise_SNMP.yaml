@@ -8,7 +8,7 @@ zabbix_export:
     - uuid: e93136daeabd4a92866838a37943c21a
       template: 'Cisco_C9200L_StackWise_SNMP'
       name: 'Cisco C9200L StackWise SNMP'
-      description: '專門監控 Cisco 堆疊 (Stack) 狀態。包含 Stack Ring 備援狀態及 Switch 成員的離線/當機告警。UUID 採用基於 Name 的 MD5 雜湊生成 (v4 相容)。'
+      description: '專門監控 Cisco 堆疊 (Stack) 狀態，包含 Stack Ring 備援狀態及 Switch 成員的離線/當機告警。'
       groups:
         - name: 'Custom Templates/Network Devices'
       items:

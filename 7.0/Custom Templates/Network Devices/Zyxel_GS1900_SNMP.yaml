@@ -1,0 +1,157 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 95a70da727284b728f3ec8df3779e27c
+      name: 'Custom Templates/Network Devices'
+  templates:
+    - uuid: f1900000000040008000000000000000
+      template: 'Zyxel_GS1900_SNMP'
+      name: 'Zyxel GS1900 SNMP'
+      description: 'Zyxel GS1900 系列專用範本。'
+      groups:
+        - name: 'Custom Templates/Network Devices'
+      items:
+        - uuid: f1900000000040008000000000000001
+          name: 'System: Description'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.1.0
+          key: system.descr
+          delay: 1h
+          value_type: TEXT
+          tags:
+            - tag: component
+              value: system
+        - uuid: f1900000000040008000000000000002
+          name: 'System: Name'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.5.0
+          key: system.name
+          delay: 1h
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: system
+        - uuid: f1900000000040008000000000000003
+          name: 'System: Uptime'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.3.0
+          key: system.uptime
+          delay: 1m
+          value_type: FLOAT
+          units: uptime
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+
+      discovery_rules:
+        - uuid: f1900000000040008000000000000004
+          name: 'Network Interfaces Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#IFDESCR},1.3.6.1.2.1.2.2.1.2]'
+          key: net.if.discovery
+          delay: 1h
+          lifetime: 30d
+          item_prototypes:
+            - uuid: f1900000000040008000000000000005
+              name: 'Interface {#IFDESCR}: Admin Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.7.{#SNMPINDEX}'
+              key: 'net.if.admin[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB interface status'
+              tags:
+                - tag: component
+                  value: network
+            - uuid: f1900000000040008000000000000006
+              name: 'Interface {#IFDESCR}: Operational Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}'
+              key: 'net.if.oper[{#SNMPINDEX}]'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB interface status'
+              tags:
+                - tag: component
+                  value: network
+              trigger_prototypes:
+                - uuid: f1900000000040008000000000000007
+                  expression: 'last(/Zyxel_GS1900_SNMP/net.if.oper[{#SNMPINDEX}])=2 and last(/Zyxel_GS1900_SNMP/net.if.oper[{#SNMPINDEX}],#2)=1'
+                  name: 'Network: Interface {#IFDESCR} Link DOWN (Critical Change)'
+                  priority: HIGH
+                - uuid: f1900000000040008000000000000008
+                  expression: 'last(/Zyxel_GS1900_SNMP/net.if.oper[{#SNMPINDEX}])=2'
+                  name: 'Network: Interface {#IFDESCR} is Down (Static)'
+                  priority: INFO
+                  dependencies:
+                    - name: 'Network: Interface {#IFDESCR} Link DOWN (Critical Change)'
+                      expression: 'last(/Zyxel_GS1900_SNMP/net.if.oper[{#SNMPINDEX}])=2 and last(/Zyxel_GS1900_SNMP/net.if.oper[{#SNMPINDEX}],#2)=1'
+            
+            - uuid: f1900000000040008000000000000009
+              name: 'Interface {#IFDESCR}: Inbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.10.{#SNMPINDEX}'
+              key: 'net.if.in[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+              tags:
+                - tag: component
+                  value: network
+            
+            - uuid: f190000000004000800000000000000a
+              name: 'Interface {#IFDESCR}: Outbound Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.16.{#SNMPINDEX}'
+              key: 'net.if.out[{#SNMPINDEX}]'
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters: ['']
+                - type: MULTIPLIER
+                  parameters: ['8']
+              tags:
+                - tag: component
+                  value: network
+
+          graph_prototypes:
+            - uuid: f190000000004000800000000000000b
+              name: 'Traffic Graph: Interface {#IFDESCR}'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'Zyxel_GS1900_SNMP'
+                    key: 'net.if.in[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  color: F63100
+                  item:
+                    host: 'Zyxel_GS1900_SNMP'
+                    key: 'net.if.out[{#SNMPINDEX}]'
+
+      valuemaps:
+        - uuid: f190000000004000800000000000000c
+          name: 'IF-MIB interface status'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '4'
+              newvalue: unknown
+            - value: '5'
+              newvalue: dormant
+            - value: '6'
+              newvalue: notPresent
+            - value: '7'
+              newvalue: lowerLayerDown

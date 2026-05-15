@@ -7,7 +7,7 @@ zabbix_export:
     - uuid: de110000000040008000000000000001
       template: 'Dell_PowerEdge_iDRAC_SNMP'
       name: 'Dell PowerEdge iDRAC SNMP'
-      description: '通用終極版：已賦予全新序列化 UUIDv4 (de11...)，徹底解決匯入衝突。適用於 iDRAC 7/8。整合硬碟、RAID、預測故障、電源與全機狀態。'
+      description: '適用於 iDRAC 7/8。整合硬碟、RAID、預測故障、電源與全機狀態。'
       groups:
         - name: 'Custom Templates/BMC'
       items:

@@ -9,7 +9,7 @@ zabbix_export:
     - uuid: 185031b26918451183026725a3962640
       template: 'Lenovo_XCC_for_ThinkSystem_SR650_SNMP'
       name: 'Lenovo XCC for ThinkSystem SR650 SNMP'
-      description: '包含溫度、風扇、硬碟、電源供應器、電壓及 RAID 陣列卡監控。UUID 採用基於 Name 的 MD5 生成。'
+      description: '包含溫度、風扇、硬碟、電源供應器、電壓及 RAID 陣列卡監控。'
       groups:
         - name: 'Custom Templates/BMC'
       items:
