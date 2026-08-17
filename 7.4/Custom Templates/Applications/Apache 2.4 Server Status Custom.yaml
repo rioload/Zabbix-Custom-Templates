@@ -1,0 +1,368 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: a100000000004000a000000000000000
+      name: Custom Templates/Applications
+  templates:
+    - uuid: a200000000004000a000000000000000
+      template: 'Apache 2.4 Server Status Custom'
+      name: 'Apache 2.4 Server Status Custom'
+      groups:
+        - name: Custom Templates/Applications
+      macros:
+        - macro: '{$APACHE.STATUS.URL}'
+          value: 'http://127.0.0.1/server-status?auto'
+        - macro: '{$APACHE.IDLE.MIN}'
+          value: '5'
+        - macro: '{$APACHE.CPU.MAX}'
+          value: '80'
+        - macro: '{$APACHE.PROCESS_NAME}'
+          value: 'apache2'
+        - macro: '{$APACHE.PORT}'
+          value: '80'
+      items:
+        - uuid: a300000000004000a000000000000001
+          name: 'Apache: Get status'
+          type: HTTP_AGENT
+          key: apache.get_status
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          url: '{$APACHE.STATUS.URL}'
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000002
+          name: 'Apache: Process count'
+          type: ZABBIX_PASSIVE
+          key: 'proc.num["{$APACHE.PROCESS_NAME}"]'
+          delay: 1m
+          history: 7d
+          value_type: UNSIGNED
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000003
+          name: 'Apache: Service status'
+          type: SIMPLE
+          key: 'net.tcp.service[http,"","{$APACHE.PORT}"]'
+          delay: 1m
+          history: 7d
+          value_type: UNSIGNED
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000004
+          name: 'Apache: CPU Load'
+          type: DEPENDENT
+          key: apache.cpuload
+          delay: '0'
+          value_type: FLOAT
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^CPULoad:\s+([0-9.]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000005
+          name: 'Apache: ReqPerSec'
+          type: DEPENDENT
+          key: apache.reqpersec
+          delay: '0'
+          value_type: FLOAT
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^ReqPerSec:\s+([0-9.]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000006
+          name: 'Apache: Total Accesses'
+          type: DEPENDENT
+          key: apache.total_accesses
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^Total Accesses:\s+([0-9]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000007
+          name: 'Apache: Total kBytes'
+          type: DEPENDENT
+          key: apache.total_kbytes
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^Total kBytes:\s+([0-9]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000008
+          name: 'Apache: Uptime'
+          type: DEPENDENT
+          key: apache.uptime
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^Uptime:\s+([0-9]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000009
+          name: 'Apache: BytesPerSec'
+          type: DEPENDENT
+          key: apache.bytespersec
+          delay: '0'
+          value_type: FLOAT
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^BytesPerSec:\s+([0-9.]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000010
+          name: 'Apache: Busy Workers'
+          type: DEPENDENT
+          key: apache.busy_workers
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^BusyWorkers:\s+([0-9]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000011
+          name: 'Apache: Idle Workers'
+          type: DEPENDENT
+          key: apache.idle_workers
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(?m)^IdleWorkers:\s+([0-9]+)'
+                - \1
+          master_item:
+            key: apache.get_status
+          tags:
+            - tag: Application
+              value: Apache
+        - uuid: a300000000004000a000000000000012
+          name: 'Apache: Workers JSON'
+          type: DEPENDENT
+          key: apache.workers.json
+          delay: '0'
+          value_type: TEXT
+          history: '0'
+          trends: '0'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var match = value.match(/Scoreboard:\s*([^\r\n]+)/);
+                  var scoreboard = match ? match[1].trim() : '';
+                  var workers = { "waiting": 0, "starting": 0, "reading": 0, "sending": 0, "keepalive": 0, "dnslookup": 0, "closing": 0, "logging": 0, "finishing": 0, "cleanup": 0, "slot": 0 };
+                  for (var j = 0; j < scoreboard.length; j++) {
+                      switch (scoreboard.charAt(j)) {
+                          case '_': workers.waiting++; break;
+                          case 'S': workers.starting++; break;
+                          case 'R': workers.reading++; break;
+                          case 'W': workers.sending++; break;
+                          case 'K': workers.keepalive++; break;
+                          case 'D': workers.dnslookup++; break;
+                          case 'C': workers.closing++; break;
+                          case 'L': workers.logging++; break;
+                          case 'G': workers.finishing++; break;
+                          case 'I': workers.cleanup++; break;
+                          case '.': workers.slot++; break;
+                      }
+                  }
+                  return JSON.stringify(workers);
+          master_item:
+            key: apache.get_status
+        - uuid: a300000000004000a000000000000013
+          name: 'Apache Worker: Waiting (_)'
+          type: DEPENDENT
+          key: apache.worker.waiting
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.waiting
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000014
+          name: 'Apache Worker: Starting (S)'
+          type: DEPENDENT
+          key: apache.worker.starting
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.starting
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000015
+          name: 'Apache Worker: Reading (R)'
+          type: DEPENDENT
+          key: apache.worker.reading
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.reading
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000016
+          name: 'Apache Worker: Sending (W)'
+          type: DEPENDENT
+          key: apache.worker.sending
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.sending
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000017
+          name: 'Apache Worker: Keepalive (K)'
+          type: DEPENDENT
+          key: apache.worker.keepalive
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.keepalive
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000018
+          name: 'Apache Worker: DNSLookup (D)'
+          type: DEPENDENT
+          key: apache.worker.dnslookup
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.dnslookup
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000019
+          name: 'Apache Worker: Closing (C)'
+          type: DEPENDENT
+          key: apache.worker.closing
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.closing
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000020
+          name: 'Apache Worker: Logging (L)'
+          type: DEPENDENT
+          key: apache.worker.logging
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.logging
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000021
+          name: 'Apache Worker: Finishing (G)'
+          type: DEPENDENT
+          key: apache.worker.finishing
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.finishing
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000022
+          name: 'Apache Worker: Cleanup (I)'
+          type: DEPENDENT
+          key: apache.worker.cleanup
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.cleanup
+          master_item:
+            key: apache.workers.json
+        - uuid: a300000000004000a000000000000023
+          name: 'Apache Worker: Slot (.)'
+          type: DEPENDENT
+          key: apache.worker.slot
+          delay: '0'
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.slot
+          master_item:
+            key: apache.workers.json
+  triggers:
+    - uuid: a400000000004000a000000000000001
+      expression: 'nodata(/Apache 2.4 Server Status Custom/apache.uptime,3m)=1'
+      name: 'Apache: 狀態頁面停止回應超過 3 分鐘'
+      priority: HIGH
+    - uuid: a400000000004000a000000000000002
+      expression: 'last(/Apache 2.4 Server Status Custom/apache.idle_workers)<{$APACHE.IDLE.MIN}'
+      name: 'Apache: 閒置 Worker 過低 (小於 {$APACHE.IDLE.MIN})'
+      priority: WARNING
+    - uuid: a400000000004000a000000000000003
+      expression: 'last(/Apache 2.4 Server Status Custom/apache.cpuload)>{$APACHE.CPU.MAX}'
+      name: 'Apache: CPU Load 過高 (大於 {$APACHE.CPU.MAX})'
+      priority: AVERAGE
+    - uuid: a400000000004000a000000000000004
+      expression: 'last(/Apache 2.4 Server Status Custom/proc.num["{$APACHE.PROCESS_NAME}"])=0'
+      name: 'Apache: 處理程序未執行'
+      priority: HIGH
+    - uuid: a400000000004000a000000000000005
+      expression: 'last(/Apache 2.4 Server Status Custom/net.tcp.service[http,"","{$APACHE.PORT}"])=0'
+      name: 'Apache: 服務已停止'
+      priority: HIGH
